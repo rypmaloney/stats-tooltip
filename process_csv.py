@@ -6,9 +6,17 @@ def make_dict(csv_file, json_file):
     with open(csv_file, 'r') as f:
         lines = csv.DictReader(f)
         for line in lines:
+            if line['FANGRAPHSNAME'] != line['YAHOONAME']:
+                y_key = line['YAHOONAME']
+                data[y_key] = {
+                "graph_id": line["IDFANGRAPHS"],
+                "pos": line["POS"]
+            }
+
             key = line['FANGRAPHSNAME']
             data[key] = {
-                "graph_id": line["IDFANGRAPHS"]
+                "graph_id": line["IDFANGRAPHS"],
+                "pos": line["POS"]
             }
 
     with open(json_file, 'w', encoding='utf-8') as jsonf:

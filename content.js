@@ -18,37 +18,82 @@ function getWordPairs(string) {
     return pairs;
 }
 
+function removeAccents(str) {
+    return str.replace(/[áéíóúÁÉÍÓÚ]/g, function (match) {
+        switch (match) {
+            case 'á':
+                return 'a';
+            case 'é':
+                return 'e';
+            case 'í':
+                return 'i';
+            case 'ó':
+                return 'o';
+            case 'ú':
+                return 'u';
+            case 'Á':
+                return 'A';
+            case 'É':
+                return 'E';
+            case 'Í':
+                return 'I';
+            case 'Ó':
+                return 'O';
+            case 'Ú':
+                return 'U';
+        }
+    });
+}
+
+/**
+ * Finds player names. Selects likely suspects with Regex.
+ * Tests two word combinations against json list.
+ *
+ * @param {json} jsonData - Json lib of player - Fangraph Id maps
+ * @param {string} paragraph -  Text from DOM
+ * @returns {object} Fangraphs Id, position, and name as it appears on the page
+ */
 function findPlayerNames(jsonData, paragraph) {
     const nameRegex =
-        /(?:\b(?!([A-Z][a-z]+)\.))(?:\b[A-Z][a-z]+\b\s){1,2}\b[A-Z][a-z]+(?:[-'][A-Za-z][a-z]+)?\b/g;
-
+        /\b[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s(?:[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s){0,4}[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\b/g;
+    // a string that starts and ends with a word in title case (i.e. with an uppercase letter followed by lowercase letters or accented characters), and can have 0 to 4 additional words
     const matches = paragraph.match(nameRegex);
-    console.log(matches);
     if (matches === null) {
         return false;
     }
     const names = [];
-    matches.forEach((match) => {
-        if (jsonData.hasOwnProperty(match)) {
-            const graphId = jsonData[match].graph_id;
-            names.push({ id: graphId, name: match });
-        } else if (match.split(' ').length > 2) {
-            const split_names = getWordPairs(match);
 
-            split_names.forEach((match) => {
-                if (jsonData.hasOwnProperty(match)) {
-                    const graphId = jsonData[match].graph_id;
-                    names.push({ id: graphId, name: match });
-                }
+    for (const match of matches) {
+        const ua_match = removeAccents(match);
+
+        if (jsonData.hasOwnProperty(ua_match)) {
+            names.push({
+                id: jsonData[ua_match]['graph_id'],
+                name: match,
+                pos: jsonData[ua_match]['pos'],
             });
+        } else if (match.split(' ').length > 2) {
+            const splitNames = getWordPairs(match);
+
+            for (const split of splitNames) {
+                const ua_split = removeAccents(split);
+
+                if (jsonData.hasOwnProperty(ua_split)) {
+                    names.push({
+                        id: jsonData[ua_split]['graph_id'],
+                        name: split,
+                        pos: jsonData[ua_split]['pos'],
+                    });
+                }
+            }
         }
-    });
+    }
 
     return names;
 }
 
-async function fetchStats(playerId) {
-    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=OF&z=1678363774`;
+async function fetchStats(playerId, pos) {
+    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -61,9 +106,20 @@ async function fetchStats(playerId) {
     }
 }
 
-const createTooltipTable = (data, keysToInclude) => {
+const createTooltipTable = (data, position) => {
+    const keysToInclude =
+        position === 'P'
+            ? ['Season', 'Age', 'AbbName', 'ERA', 'FIP', 'WHIP', 'WAR']
+            : ['Season', 'Age', 'AbbName', 'G', 'wOBA', 'wRC+', 'WAR'];
+
+    const string_data = ['Season', 'Age', 'AbbName', 'AbbLevel', 'Season'];
+
     const table = document.createElement('table');
-    const headerRow = table.insertRow();
+    const header = table.createTHead();
+    const tablebody = table.createTBody();
+    // Create an empty <tr> element and add it to the first position of <thead>:
+
+    const headerRow = header.insertRow();
     for (let i = 0; i < keysToInclude.length; i++) {
         const headerCell = headerRow.insertCell();
         headerCell.textContent = keysToInclude[i];
@@ -71,28 +127,37 @@ const createTooltipTable = (data, keysToInclude) => {
 
     // Get the current year and the two previous years
     const currentYear = new Date().getFullYear();
-    const previousYears = [currentYear - 1, currentYear - 2];
-
-    // Create a set of years that have already been added to the table
-    const addedYears = new Set();
+    const previousYears = [
+        currentYear - 1,
+        currentYear - 2,
+        currentYear - 3,
+        currentYear - 4,
+    ];
 
     // Create a row for each object in the data that matches the current or previous years
     for (var j = 0; j < data.length; j++) {
         const aseasonYear = parseInt(data[j]['aseason']);
+        const team = data[j]['Team'];
+        const level = data[j]['AbbLevel'];
+
         if (
             previousYears.includes(aseasonYear) &&
-            !addedYears.has(aseasonYear)
+            team != 'Average' &&
+            level == 'MLB' &&
+            data[j].hasOwnProperty('WAR')
         ) {
-            const dataRow = table.insertRow();
-            for (let k = 0; k < keysToInclude.length; k++) {
-                let tdata = data[j][keysToInclude[k]];
-                if (keysToInclude[k] != 'Season') {
-                    tdata = Math.round(tdata * 10) / 10;
+            const dataRow = tablebody.insertRow();
+
+            keysToInclude.forEach((key) => {
+                let tdata = data[j][key];
+
+                if (!string_data.includes(key)) {
+                    tdata = Math.round(tdata * 100) / 100;
                 }
+
                 const dataCell = dataRow.insertCell();
                 dataCell.innerHTML = tdata;
-            }
-            addedYears.add(aseasonYear);
+            });
         }
     }
 
@@ -101,37 +166,42 @@ const createTooltipTable = (data, keysToInclude) => {
 };
 
 (async () => {
-    const elements = document.querySelectorAll('a, p, td, h1, h2, h3, h4');
-    const jsonData = await loadJsonFile('stript.json');
+    const elements = document.querySelectorAll('p a, p, td');
+    const jsonUrl = chrome.runtime.getURL('stript.json');
+    const jsonData = await loadJsonFile(jsonUrl);
+    setTimeout(async () => {
+        for (i = 0; i < elements.length; i++) {
+            const foundPlayers = findPlayerNames(
+                jsonData,
+                elements[i].innerText
+            );
+            const originalText = elements[i].innerHTML;
+            let replacedText = originalText;
 
-    for (i = 0; i < elements.length; i++) {
-        const foundPlayers = findPlayerNames(jsonData, elements[i].innerText);
-        const originalText = elements[i].innerHTML;
-        let replacedText = originalText;
+            if (foundPlayers) {
+                for (let j = 0; j < foundPlayers.length; j++) {
+                    try {
+                        const data = await fetchStats(
+                            foundPlayers[j]['id'],
+                            foundPlayers[j]['pos']
+                        );
+                        const position = data['playerInfo']['Position'];
 
-        if (foundPlayers) {
-            for (let j = 0; j < foundPlayers.length; j++) {
-                try {
-                    const data = await fetchStats(foundPlayers[j]['id']);
+                        const table = createTooltipTable(
+                            data['data'],
+                            position
+                        );
 
-                    const table = createTooltipTable(data['data'], [
-                        'Season',
-                        'Age',
-                        'G',
-                        'wOBA',
-                        'wRC+',
-                        'WAR',
-                    ]);
-
-                    replacedText = replacedText.replace(
-                        foundPlayers[j]['name'],
-                        `<span class="tooltip">${foundPlayers[j]['name']}<span class="tooltiptext">${table}</span></span>`
-                    );
-                } catch (error) {
-                    console.error(error);
+                        replacedText = replacedText.replace(
+                            foundPlayers[j]['name'],
+                            `<span class="tooltip">${foundPlayers[j]['name']}<span class="tooltiptext">${table}</span></span>`
+                        );
+                    } catch (error) {
+                        console.error(error);
+                    }
                 }
             }
+            elements[i].innerHTML = replacedText;
         }
-        elements[i].innerHTML = replacedText;
-    }
+    }, 1500);
 })();
