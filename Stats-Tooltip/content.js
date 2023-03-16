@@ -1,8 +1,4 @@
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.selectedOptions !== undefined) {
-        console.log(request.selectedOptions);
-    }
-});
+chrome.storage.sync.clear();
 
 async function loadJsonFile(filename) {
     try {
@@ -140,7 +136,7 @@ const processPlayerData = (data, position, selectedOptions) => {
     for (let j = 0; j < data.length; j++) {
         const aseasonYear = parseInt(data[j]['aseason']);
         const team = data[j]['Team'];
-        const level = data[j]['AbbLevel'];
+
         if (
             previousYears.includes(aseasonYear) &&
             team != 'Average' &&
@@ -187,111 +183,88 @@ function createTable(data) {
 
     return table.outerHTML;
 }
+const createToolTip = (data, id, pos, name) => {
+    const table = createTable(data);
+    const fangraphsLink = `<sup class="tooltiplink"><a target="_blank" href=https://www.fangraphs.com/players/mike-trout/${id}/stats?position=${pos} target="_blank" class=tooltiplink>(F)</a></sup>`;
+    return `<span class="tooltip"><span class="tooltip-player">${name}</span><span class="tooltiptext">${table}</span>${fangraphsLink}</span>`;
+};
 
-const createTooltipTable = (data, position) => {
-    const about = ['AbbLevel', 'aseason', 'Age', 'AbbName'];
-    const string_data = ['aseason', 'AbbLevel', 'Age', 'AbbName', 'AbbLevel'];
-    const keysToInclude =
-        position === 'P'
-            ? about.concat(['IP', 'ERA', 'WHIP', 'FIP', 'xFIP', 'WAR'])
-            : about.concat(['G', 'wOBA', 'wRC+', 'WAR']);
-
-    const table = document.createElement('table');
-    const header = table.createTHead();
-    const tablebody = table.createTBody();
-
-    const headerRow = header.insertRow();
-    for (let i = 0; i < keysToInclude.length; i++) {
-        const headerCell = headerRow.insertCell();
-        headerCell.textContent = keysToInclude[i];
-    }
-
-    // Get the current year and the two previous years
-    const currentYear = new Date().getFullYear();
-    const previousYears = [
-        currentYear - 1,
-        currentYear - 2,
-        currentYear - 3,
-        currentYear - 4,
-    ];
-
-    // Create a row for each object in the data that matches the current or previous years
-    for (var j = 0; j < data.length; j++) {
-        const aseasonYear = parseInt(data[j]['aseason']);
-        const team = data[j]['Team'];
-        const level = data[j]['AbbLevel'];
-
-        if (
-            previousYears.includes(aseasonYear) &&
-            team != 'Average' &&
-            level == 'MLB' &&
-            data[j].hasOwnProperty('WAR')
-        ) {
-            const dataRow = tablebody.insertRow();
-
-            keysToInclude.forEach((key) => {
-                let tdata = data[j][key];
-
-                if (!string_data.includes(key)) {
-                    tdata = Math.round(tdata * 100) / 100;
-                }
-
-                const dataCell = dataRow.insertCell();
-                dataCell.innerHTML = tdata;
-            });
-        }
-    }
-
-    return table.outerHTML;
+const removeTooltips = () => {
+    const toolTips = document.querySelectorAll('.tooltip');
+    toolTips.forEach((element) => {
+        const playerName = element.querySelector('.tooltip-player').textContent;
+        const playerNode = document.createTextNode(playerName);
+        element.parentNode.replaceChild(playerNode, element);
+    });
+    document.querySelectorAll('.tooltiplink').forEach((element) => {
+        element.remove();
+    });
 };
 
 const runPage = async (settings) => {
     const elements = document.querySelectorAll('p a, p, td');
-    const jsonUrl = chrome.runtime.getURL('stript.json');
-    const jsonData = await loadJsonFile(jsonUrl);
+    const striptJsonUrl = chrome.runtime.getURL('map.json');
+    const playerData = {};
+    let replacedText;
 
-    for (i = 0; i < elements.length; i++) {
-        const foundPlayers = findPlayerNames(jsonData, elements[i].innerText);
-        const originalText = elements[i].innerHTML;
-        let replacedText = originalText;
+    try {
+        const jsonData = await loadJsonFile(striptJsonUrl);
 
-        if (foundPlayers) {
-            for (let j = 0; j < foundPlayers.length; j++) {
-                try {
-                    const playerId = foundPlayers[j]['id'];
-                    const pos = foundPlayers[j]['pos'];
-                    const playerName = foundPlayers[j]['name'];
+        for (let i = 0; i < elements.length; i++) {
+            const elementText = elements[i].innerText;
+            const foundPlayers = findPlayerNames(jsonData, elementText);
+            const originalText = elements[i].innerHTML;
+            replacedText = originalText;
 
-                    const data = await fetchStats(playerId, pos);
+            if (foundPlayers) {
+                for (let j = 0; j < foundPlayers.length; j++) {
+                    try {
+                        const { id, pos, name } = foundPlayers[j];
 
-                    const playerData = processPlayerData(
-                        data['data'],
-                        pos,
-                        settings
-                    );
-                    if (playerData.length == 0) console.log(playerName);
-                    const table = createTable(playerData);
-                    const fangraphsLink = `<sup> <a target="_blank" href=https://www.fangraphs.com/players/mike-trout/${playerId}/stats?position=${pos} target="_blank" class=tooltiplink>(F)</a></sup>`;
+                        if (!playerData[id]) {
+                            const data = await fetchStats(id, pos);
 
-                    replacedText = replacedText.replace(
-                        playerName,
-                        `<span class="tooltip">${playerName}<span class="tooltiptext">${table}</span></span>${fangraphsLink}`
-                    );
-                } catch (error) {
-                    console.error(error);
+                            if (!data) {
+                                continue;
+                            }
+
+                            playerData[id] = processPlayerData(
+                                data['data'],
+                                pos,
+                                settings
+                            );
+                        }
+
+                        if (playerData[id].length > 0) {
+                            const tooltip = createToolTip(
+                                playerData[id],
+                                id,
+                                pos,
+                                name
+                            );
+                            replacedText = replacedText.replace(name, tooltip);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
                 }
             }
+            elements[i].innerHTML = replacedText;
         }
-        elements[i].innerHTML = replacedText;
+    } catch (error) {
+        console.error(error);
     }
 };
 
 chrome.storage.sync.get('selectedOptions', function (items) {
-    if (items.selectedOptions == undefined) return 'ERROR';
-    runPage(items.selectedOptions);
+    let options = window.defaultSettings;
+    if (items.selectedOptions !== undefined) options = items.selectedOptions;
+    runPage(options);
 });
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.selectedOptions !== undefined) {
-        //runPage(request.selectedOptions);
+        removeTooltips();
+        runPage(request.selectedOptions);
     }
 });

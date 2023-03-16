@@ -8,7 +8,7 @@
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
-            "js": ["content.js"],
+            "js": ["content.js", "settings.js"],
             "css": ["content.css"]
         }
     ],
@@ -18,7 +18,7 @@
     "web_accessible_resources": [
         {
             "matches": ["<all_urls>"],
-            "resources": ["stript.json"]
+            "resources": ["map.json"]
         }
     ]
 }
