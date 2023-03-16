@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    </head>
+    <body>
+        <h1>Fangraphs Tooltip</h1>
+        <div class="fields">
+            <h2>Pitching Stats:</h2>
+            <div class="container" id="p-container"></div>
+            <h2>Batting Stats:</h2>
+            <div class="container" id="b-container"></div>
+        </div>
+
+        <script src="./popup.js" type="module"></script>
+        <style>
+            .fields {
+                display: flex;
+                width: 400px;
+                flex-direction: column;
+            }
+            .container {
+                margin: auto;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .select {
+                width: 100px;
+                height: 150px;
+            }
+            option:checked {
+                background-color: rgb(152, 212, 134);
+            }
+
+            .container div {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                width: 8em;
+            }
+            .container input[type='checkbox'] {
+                appearance: none;
+                border-radius: 50%;
+                border: 2px solid #555;
+                width: 1.2em;
+                height: 1.2em;
+                margin-right: 0.5em;
+                cursor: pointer;
+                display: inline-block;
+                position: relative;
+            }
+            /* style for the checked state */
+            .container input[type='checkbox']:checked:before {
+                content: '\2713';
+                display: block;
+                width: 1.2em;
+                height: 1.2em;
+                position: absolute;
+                top: -0.3em;
+                left: -0.2em;
+                font-size: 1.5em;
+                line-height: 1;
+                text-align: center;
+                color: rgb(32, 135, 37);
+            }
+            .container label {
+                font-size: 1em;
+                cursor: pointer;
+                margin-right: 5px;
+            }
+        </style>
+    </body>
+</html>

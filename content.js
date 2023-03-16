@@ -1,3 +1,9 @@
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.selectedOptions !== undefined) {
+        console.log(request.selectedOptions);
+    }
+});
+
 async function loadJsonFile(filename) {
     try {
         const response = await fetch(filename);
@@ -106,18 +112,93 @@ async function fetchStats(playerId, pos) {
     }
 }
 
+function getSelectedValuesByPos(settings, pos) {
+    return settings
+        .filter((obj) => obj.pos === pos && obj.selected)
+        .map((obj) => obj.value);
+}
+
+const processPlayerData = (data, position, selectedOptions) => {
+    const about = ['aseason', 'Age', 'AbbName'];
+    const string_data = ['aseason', 'Age', 'AbbName', 'AbbLevel'];
+
+    keysToInclude =
+        position === 'P'
+            ? about.concat(getSelectedValuesByPos(selectedOptions, 'p'))
+            : about.concat(getSelectedValuesByPos(selectedOptions, 'b'));
+
+    const playerDataList = [];
+    // Get the current year and the two previous years
+    const currentYear = new Date().getFullYear();
+    const previousYears = [
+        currentYear - 1,
+        currentYear - 2,
+        currentYear - 3,
+        currentYear - 4,
+    ];
+
+    for (let j = 0; j < data.length; j++) {
+        const aseasonYear = parseInt(data[j]['aseason']);
+        const team = data[j]['Team'];
+        const level = data[j]['AbbLevel'];
+        if (
+            previousYears.includes(aseasonYear) &&
+            team != 'Average' &&
+            data[j].hasOwnProperty('WAR')
+        ) {
+            const playerDataObject = {};
+            keysToInclude.forEach((key) => {
+                let tdata = data[j][key];
+                if (!string_data.includes(key)) {
+                    tdata = Math.round(tdata * 100) / 100;
+                }
+                playerDataObject[key] = tdata;
+            });
+            playerDataList.push(playerDataObject);
+        }
+    }
+
+    return playerDataList;
+};
+
+function createTable(data) {
+    const table = document.createElement('table');
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+
+    // create header cells in one line using array.map()
+    Object.keys(data[0]).map((key) => {
+        const headerCell = document.createElement('th');
+        headerCell.textContent = key;
+        headerRow.appendChild(headerCell);
+    });
+
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
+    // create data rows in one line using array.forEach()
+    data.forEach((obj) => {
+        const row = tbody.insertRow();
+        Object.values(obj).forEach((val) => {
+            const cell = row.insertCell();
+            cell.textContent = val;
+        });
+    });
+
+    return table.outerHTML;
+}
+
 const createTooltipTable = (data, position) => {
+    const about = ['AbbLevel', 'aseason', 'Age', 'AbbName'];
+    const string_data = ['aseason', 'AbbLevel', 'Age', 'AbbName', 'AbbLevel'];
     const keysToInclude =
         position === 'P'
-            ? ['Season', 'Age', 'AbbName', 'ERA', 'FIP', 'WHIP', 'WAR']
-            : ['Season', 'Age', 'AbbName', 'G', 'wOBA', 'wRC+', 'WAR'];
-
-    const string_data = ['Season', 'Age', 'AbbName', 'AbbLevel', 'Season'];
+            ? about.concat(['IP', 'ERA', 'WHIP', 'FIP', 'xFIP', 'WAR'])
+            : about.concat(['G', 'wOBA', 'wRC+', 'WAR']);
 
     const table = document.createElement('table');
     const header = table.createTHead();
     const tablebody = table.createTBody();
-    // Create an empty <tr> element and add it to the first position of <thead>:
 
     const headerRow = header.insertRow();
     for (let i = 0; i < keysToInclude.length; i++) {
@@ -161,47 +242,56 @@ const createTooltipTable = (data, position) => {
         }
     }
 
-    // Return the HTML code for the table
     return table.outerHTML;
 };
 
-(async () => {
+const runPage = async (settings) => {
     const elements = document.querySelectorAll('p a, p, td');
     const jsonUrl = chrome.runtime.getURL('stript.json');
     const jsonData = await loadJsonFile(jsonUrl);
-    setTimeout(async () => {
-        for (i = 0; i < elements.length; i++) {
-            const foundPlayers = findPlayerNames(
-                jsonData,
-                elements[i].innerText
-            );
-            const originalText = elements[i].innerHTML;
-            let replacedText = originalText;
 
-            if (foundPlayers) {
-                for (let j = 0; j < foundPlayers.length; j++) {
-                    try {
-                        const data = await fetchStats(
-                            foundPlayers[j]['id'],
-                            foundPlayers[j]['pos']
-                        );
-                        const position = data['playerInfo']['Position'];
+    for (i = 0; i < elements.length; i++) {
+        const foundPlayers = findPlayerNames(jsonData, elements[i].innerText);
+        const originalText = elements[i].innerHTML;
+        let replacedText = originalText;
 
-                        const table = createTooltipTable(
-                            data['data'],
-                            position
-                        );
+        if (foundPlayers) {
+            for (let j = 0; j < foundPlayers.length; j++) {
+                try {
+                    const playerId = foundPlayers[j]['id'];
+                    const pos = foundPlayers[j]['pos'];
+                    const playerName = foundPlayers[j]['name'];
 
-                        replacedText = replacedText.replace(
-                            foundPlayers[j]['name'],
-                            `<span class="tooltip">${foundPlayers[j]['name']}<span class="tooltiptext">${table}</span></span>`
-                        );
-                    } catch (error) {
-                        console.error(error);
-                    }
+                    const data = await fetchStats(playerId, pos);
+
+                    const playerData = processPlayerData(
+                        data['data'],
+                        pos,
+                        settings
+                    );
+                    if (playerData.length == 0) console.log(playerName);
+                    const table = createTable(playerData);
+                    const fangraphsLink = `<sup> <a target="_blank" href=https://www.fangraphs.com/players/mike-trout/${playerId}/stats?position=${pos} target="_blank" class=tooltiplink>(F)</a></sup>`;
+
+                    replacedText = replacedText.replace(
+                        playerName,
+                        `<span class="tooltip">${playerName}<span class="tooltiptext">${table}</span></span>${fangraphsLink}`
+                    );
+                } catch (error) {
+                    console.error(error);
                 }
             }
-            elements[i].innerHTML = replacedText;
         }
-    }, 1500);
-})();
+        elements[i].innerHTML = replacedText;
+    }
+};
+
+chrome.storage.sync.get('selectedOptions', function (items) {
+    if (items.selectedOptions == undefined) return 'ERROR';
+    runPage(items.selectedOptions);
+});
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.selectedOptions !== undefined) {
+        //runPage(request.selectedOptions);
+    }
+});

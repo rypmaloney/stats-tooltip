@@ -3,7 +3,7 @@
     "name": "Stats Tooltip",
     "description": "Enrich webpages with baseball data.",
     "version": "1.0",
-    "permissions": ["tabs", "activeTab", "scripting"],
+    "permissions": ["tabs", "activeTab", "scripting", "storage"],
     "host_permissions": ["*://*/*"],
     "content_scripts": [
         {
@@ -12,6 +12,9 @@
             "css": ["content.css"]
         }
     ],
+    "action": {
+        "default_popup": "popup.html"
+    },
     "web_accessible_resources": [
         {
             "matches": ["<all_urls>"],

@@ -2,23 +2,29 @@
     all: unset
 }
 
-.tooltiptext a {
-    all: unset
-}
 
-tooltiptext p {
-    all: unset
+.tooltiplink{
+    vertical-align: super;
+    text-decoration: none;
+    font-size: 7px;
+    color:  rgb(29, 110, 4) !important;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.tooltip:link{
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .tooltip {
-    all:unset;
     position: relative;
     display: inline-block;
-    border-bottom: 3px dotted rgb(45, 163, 9);
+    padding-bottom: -3px;
+    border-bottom: 3px dotted rgb(29, 110, 4);
 }
 
 
 .tooltiptext{
+    width: fit-content;
     z-index: 2;
     font-size: 13px;
     line-height: 1em;
@@ -31,7 +37,6 @@ tooltiptext p {
 .tooltip .tooltiptext {
     visibility: hidden;
     font-family: Arial, Helvetica, sans-serif;
-    width: fit-content;
     color: #fff;
     text-align: center;
     border-radius: 6px;
@@ -45,7 +50,7 @@ tooltiptext p {
 .tooltip .tooltiptext {
     bottom: 150%;
     left: 50%;
-    margin-left: -100px;
+    margin-left: -200px;
     /* Use these properties to keep tooltip within bounds */
     left: 0;
     right: 0;
