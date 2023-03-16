@@ -2,8 +2,13 @@ import csv
 import json
 
 def make_dict(csv_file, json_file):
+    """
+    Turn Player Map file into JSON to be queried in extension script.
+    Some Yahoo are different from Fangraph namings,
+    eg Kiké Hernández v.s. Enrique Hernández.
+    """
     data={}
-    with open(csv_file, 'r') as f:
+    with open(csv_file, 'r',  encoding='utf-8') as f:
         lines = csv.DictReader(f)
         for line in lines:
             if line['FANGRAPHSNAME'] != line['YAHOONAME']:
@@ -20,6 +25,6 @@ def make_dict(csv_file, json_file):
             }
 
     with open(json_file, 'w', encoding='utf-8') as jsonf:
-        jsonf.write(json.dumps(data, indent=4))
+        json.dump(data, jsonf, indent=4)
 
-make_dict("player_map.csv", "stript.json")
+make_dict("PlayerMap3-23.csv", "map.json")
