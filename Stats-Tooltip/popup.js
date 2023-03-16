@@ -1,3 +1,5 @@
+import { defaultSettings } from './settings.js';
+
 const buildList = (options, pParent, bParent) => {
     options.forEach(function (option) {
         const { value, selected, pos } = option;
@@ -62,7 +64,8 @@ const addCheckListeners = (checkboxes) => {
 };
 //chrome.storage.sync.clear()
 chrome.storage.sync.get('selectedOptions', function (items) {
-    let settings = window.defaultSettings;
+    let settings = defaultSettings;
+    console.log(window);
     if (items.selectedOptions != undefined) {
         settings = items.selectedOptions;
     }

@@ -6,19 +6,84 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     </head>
     <body>
-        <h1>Fangraphs Tooltip</h1>
-        <div class="fields">
-            <h2>Pitching Stats:</h2>
-            <div class="container" id="p-container"></div>
-            <h2>Batting Stats:</h2>
-            <div class="container" id="b-container"></div>
-        </div>
+        <header>
+            <div>
+                <img src="./icons/icon128.png" />
+                <div>
+                    <h1>Baseball Stats Tooltip</h1>
+                    <p class="small">Advanced stats for active MLB players</p>
+                </div>
+            </div>
+        </header>
 
+        <main>
+            <div class="fields">
+                <div class="set">
+                    <h2>Pitching Stats</h2>
+
+                    <div class="container" id="p-container"></div>
+                </div>
+                <div class="set">
+                    <h2>Batting Stats</h2>
+
+                    <div class="container" id="b-container"></div>
+                </div>
+            </div>
+        </main>
         <script src="./popup.js" type="module"></script>
         <style>
+            body {
+                width: 400px;
+                background-color: rgb(224, 224, 224);
+                border-radius: 5px;
+                padding: 0.5em;
+                font-family: Verdana, Geneva, Tahoma, sans-serif;
+            }
+            header,
+            .set {
+                padding: 0.5em 1em;
+                margin: 0.4em;
+                background-color: white;
+                border-radius: 7px;
+            }
+            .collapsed {
+                height: 0;
+                overflow: hidden;
+            }
+            header div {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-around;
+            }
+            header div div {
+                display: flex;
+                flex-direction: column;
+            }
+            img {
+                width: 50px;
+                height: 50px;
+                padding-top: 5px;
+            }
+            h1,
+            h2 {
+                font-weight: 400;
+            }
+            h1 {
+                color: rgb(171, 42, 42);
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }
+            h2 {
+                text-align: center;
+                padding-bottom: 7px;
+                border-bottom: 1px solid rgb(224, 224, 224);
+            }
+            .small {
+                font-size: 10px;
+                font-style: italic;
+            }
             .fields {
                 display: flex;
-                width: 400px;
                 flex-direction: column;
             }
             .container {
@@ -39,15 +104,16 @@
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                width: 8em;
+                width: 7.8em;
+                margin: auto;
             }
             .container input[type='checkbox'] {
                 appearance: none;
                 border-radius: 50%;
                 border: 2px solid #555;
-                width: 1.2em;
-                height: 1.2em;
-                margin-right: 0.5em;
+                width: 1em;
+                height: 1em;
+
                 cursor: pointer;
                 display: inline-block;
                 position: relative;
@@ -59,17 +125,17 @@
                 width: 1.2em;
                 height: 1.2em;
                 position: absolute;
-                top: -0.3em;
-                left: -0.2em;
+                top: -0.4em;
+                left: -0.3em;
                 font-size: 1.5em;
                 line-height: 1;
                 text-align: center;
                 color: rgb(32, 135, 37);
             }
             .container label {
-                font-size: 1em;
+                font-size: 1.1em;
                 cursor: pointer;
-                margin-right: 5px;
+                margin: 5px;
             }
         </style>
     </body>
