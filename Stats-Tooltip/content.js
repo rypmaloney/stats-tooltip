@@ -1,4 +1,5 @@
-chrome.storage.sync.clear();
+//chrome.storage.sync.clear();
+//import { defaultSettings } from './settings.js';
 
 async function loadJsonFile(filename) {
     try {
@@ -55,7 +56,7 @@ function removeAccents(str) {
  * @param {string} paragraph -  Text from DOM
  * @returns {object} Fangraphs Id, position, and name as it appears on the page
  */
-function findPlayerNames(jsonData, paragraph) {
+const findPlayerNames = (jsonData, paragraph) => {
     const nameRegex =
         /\b[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s(?:[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s){0,4}[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\b/g;
     // a string that starts and ends with a word in title case (i.e. with an uppercase letter followed by lowercase letters or accented characters), and can have 0 to 4 additional words
@@ -92,9 +93,9 @@ function findPlayerNames(jsonData, paragraph) {
     }
 
     return names;
-}
+};
 
-async function fetchStats(playerId, pos) {
+const fetchStats = async (playerId, pos) => {
     const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
     try {
         const response = await fetch(url);
@@ -106,17 +107,18 @@ async function fetchStats(playerId, pos) {
     } catch (error) {
         console.error(error);
     }
-}
+};
 
-function getSelectedValuesByPos(settings, pos) {
+const getSelectedValuesByPos = (settings, pos) => {
     return settings
         .filter((obj) => obj.pos === pos && obj.selected)
         .map((obj) => obj.value);
-}
+};
 
 const processPlayerData = (data, position, selectedOptions) => {
-    const about = ['aseason', 'Age', 'AbbName'];
+    const about = ['aseason', 'AbbName', 'Age'];
     const string_data = ['aseason', 'Age', 'AbbName', 'AbbLevel'];
+    const thousands = ['AVG', 'OBP', 'wOBA', 'BABIP', 'OPS', 'SLG'];
 
     keysToInclude =
         position === 'P'
@@ -146,7 +148,9 @@ const processPlayerData = (data, position, selectedOptions) => {
             keysToInclude.forEach((key) => {
                 let tdata = data[j][key];
                 if (!string_data.includes(key)) {
-                    tdata = Math.round(tdata * 100) / 100;
+                    if (thousands.includes(key)) {
+                        tdata = Math.round(tdata * 1000) / 1000;
+                    } else tdata = Math.round(tdata * 100) / 100;
                 }
                 playerDataObject[key] = tdata;
             });
@@ -157,7 +161,8 @@ const processPlayerData = (data, position, selectedOptions) => {
     return playerDataList;
 };
 
-function createTable(data) {
+const createTable = (data) => {
+    const about = ['aseason', 'AbbName'];
     const table = document.createElement('table');
     const thead = table.createTHead();
     const headerRow = thead.insertRow();
@@ -165,7 +170,9 @@ function createTable(data) {
     // create header cells in one line using array.map()
     Object.keys(data[0]).map((key) => {
         const headerCell = document.createElement('th');
-        headerCell.textContent = key;
+        if (!about.includes(key)) {
+            headerCell.textContent = key;
+        }
         headerRow.appendChild(headerCell);
     });
 
@@ -182,13 +189,18 @@ function createTable(data) {
     });
 
     return table.outerHTML;
-}
+};
+
 const createToolTip = (data, id, pos, name) => {
     const table = createTable(data);
     const fangraphsLink = `<sup class="tooltiplink"><a target="_blank" href=https://www.fangraphs.com/players/mike-trout/${id}/stats?position=${pos} target="_blank" class=tooltiplink>(F)</a></sup>`;
     return `<span class="tooltip"><span class="tooltip-player">${name}</span><span class="tooltiptext">${table}</span>${fangraphsLink}</span>`;
 };
 
+/**
+ * Remove tooltips from the page.
+ * Allows regenerating of tooltips on settings change.
+ */
 const removeTooltips = () => {
     const toolTips = document.querySelectorAll('.tooltip');
     toolTips.forEach((element) => {
@@ -201,7 +213,20 @@ const removeTooltips = () => {
     });
 };
 
+/**
+ * Some websites insert styles on tables automatically with javascript.
+ * This ensures only the tooltip styles are applied to the table.
+ */
+const removeClasses = () => {
+    const tables = document.querySelectorAll('.tooltiptext table');
+    tables.forEach((element) => {
+        element.classList.remove(...element.classList);
+    });
+    console.log('Removed table classes.');
+};
+
 const runPage = async (settings) => {
+    console.log('Running Page.');
     const elements = document.querySelectorAll('p a, p, td');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
     const playerData = {};
@@ -257,9 +282,23 @@ const runPage = async (settings) => {
 };
 
 chrome.storage.sync.get('selectedOptions', function (items) {
-    let options = window.defaultSettings;
-    if (items.selectedOptions !== undefined) options = items.selectedOptions;
-    runPage(options);
+    (async () => {
+        // workaround to import in non-module
+        const src = chrome.runtime.getURL('settings.js');
+        const settings = await import(src);
+
+        let options = settings.defaultSettings;
+        if (items.selectedOptions !== undefined)
+            options = items.selectedOptions;
+
+        runPage(options);
+    })();
+
+    window.addEventListener('load', function () {
+        setTimeout(() => {
+            removeClasses();
+        }, 1500);
+    });
 });
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -267,4 +306,5 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         removeTooltips();
         runPage(request.selectedOptions);
     }
+    removeClasses();
 });

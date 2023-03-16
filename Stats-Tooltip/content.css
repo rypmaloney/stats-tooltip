@@ -1,4 +1,7 @@
 
+.tooltiptext table {
+    all: unset
+}
 .tooltiptext  table,.tooltiptext  caption,.tooltiptext  tbody,.tooltiptext  tfoot,.tooltiptext  thead,.tooltiptext  tr, .tooltiptext th, .tooltiptext td {
     margin: 0;
     padding: 0;
@@ -8,9 +11,7 @@
     vertical-align: baseline;
     background: transparent;
 }
-.tooltiptext table {
-    all: unset
-}
+
 
 
 .tooltiplink{
@@ -18,7 +19,7 @@
     text-decoration: none;
     font-size: 7px;
     color:  rgb(29, 110, 4) !important;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
     padding-left: 1px;
 }
 
@@ -31,6 +32,7 @@
 .tooltip {
     position: relative;
     display: inline-block;
+    line-height: 1;
     padding-bottom: 0 !important;
     border-bottom: 3px dotted rgb(29, 110, 4);
 }
@@ -38,18 +40,19 @@
 
 .tooltiptext{
     width: fit-content;
-    z-index: 2;
+    z-index: 10000;
     font-size: 13px;
     line-height: 1em;
     font-size: 100 !important;
     background-color: #555;
     font-weight: 300;
+
 }
 
 
 .tooltip .tooltiptext {
     visibility: hidden;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     color: #fff;
     text-align: center;
     border-radius: 6px;
@@ -99,6 +102,7 @@
     padding: 7px;
 }
 .tooltiptext table {
+    font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     border-collapse: separate;
     border-spacing: 10px 0;
     border: none;
@@ -110,4 +114,4 @@
 }
 .tooltiptext td {
     padding: 4px 0;
-  }
+}
