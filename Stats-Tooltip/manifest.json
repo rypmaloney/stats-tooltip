@@ -7,18 +7,25 @@
     "host_permissions": ["*://*/*"],
     "content_scripts": [
         {
-            "matches": ["<all_urls>"],
-            "js": ["content.js", "settings.js"],
-            "css": ["content.css"]
+            "matches": ["*://*/*"],
+            "exclude_matches": ["https://theathletic.com/"],
+            "js": ["content.js"],
+            "css": ["content.css"],
+            "type": "module"
         }
     ],
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
     "action": {
         "default_popup": "popup.html"
     },
     "web_accessible_resources": [
         {
             "matches": ["<all_urls>"],
-            "resources": ["map.json"]
+            "resources": ["map.json", "settings.js"]
         }
     ]
 }
