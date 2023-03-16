@@ -65,7 +65,6 @@ const addCheckListeners = (checkboxes) => {
 //chrome.storage.sync.clear()
 chrome.storage.sync.get('selectedOptions', function (items) {
     let settings = defaultSettings;
-    console.log(window);
     if (items.selectedOptions != undefined) {
         settings = items.selectedOptions;
     }
