@@ -1,4 +1,9 @@
 import { defaultSettings } from './settings.js';
+const postError = (error) => {
+    console.log();
+    const errorMsg = document.getElementById('error');
+    errorMsg.textContent = error;
+};
 
 const buildList = (options, pParent, bParent) => {
     options.forEach(function (option) {
@@ -26,9 +31,24 @@ const buildList = (options, pParent, bParent) => {
 const addCheckListeners = (checkboxes) => {
     checkboxes.forEach(function (checkbox) {
         checkbox.addEventListener('change', function () {
-            var selectedOptions = [];
-            console.log(checkboxes);
+            let selectedOptions = [];
+
             checkboxes.forEach(function (checkbox) {
+                if (
+                    selectedOptions.filter(
+                        (o) => o.pos == 'p' && o.selected == true
+                    ).length > 7 ||
+                    selectedOptions.filter(
+                        (o) => o.pos != 'p' && o.selected == true
+                    ).length > 7
+                ) {
+                    postError(
+                        'Selecting more than 7 stats may cause the tooltip to run off the page.'
+                    );
+                } else {
+                    postError('');
+                }
+
                 if (checkbox.checked) {
                     selectedOptions.push({
                         value: checkbox.id,
@@ -43,6 +63,7 @@ const addCheckListeners = (checkboxes) => {
                     });
                 }
             });
+            console.log(selectedOptions);
 
             chrome.storage.sync.set(
                 { selectedOptions: selectedOptions },
