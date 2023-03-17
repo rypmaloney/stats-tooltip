@@ -72,6 +72,9 @@ const findPlayerNames = (jsonData, paragraph) => {
         if (jsonData.hasOwnProperty(ua_match)) {
             names.push({
                 id: jsonData[ua_match]['graph_id'],
+                f_id: jsonData[ua_match]['graph_id'],
+                b_id: jsonData[ua_match]['id_player'],
+                rr_id: jsonData[ua_match]['rr'],
                 name: match,
                 pos: jsonData[ua_match]['pos'],
             });
@@ -84,6 +87,9 @@ const findPlayerNames = (jsonData, paragraph) => {
                 if (jsonData.hasOwnProperty(ua_split)) {
                     names.push({
                         id: jsonData[ua_split]['graph_id'],
+                        f_id: jsonData[ua_split]['graph_id'],
+                        b_id: jsonData[ua_split]['id_player'],
+                        rr_id: jsonData[ua_split]['rr'],
                         name: split,
                         pos: jsonData[ua_split]['pos'],
                     });
@@ -96,14 +102,17 @@ const findPlayerNames = (jsonData, paragraph) => {
 };
 
 const fetchStats = async (playerId, pos) => {
-    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
+    let url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
+    if (pos === 't') url = `https://www.fangraphs.com/api/menu/menu-standings`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        return data;
+
+        if (pos === 't') return data.filter((t) => t['AbbName'] == playerId)[0]; //this is the ABBR
+        return data['data'];
     } catch (error) {
         console.error(error);
     }
@@ -116,6 +125,19 @@ const getSelectedValuesByPos = (settings, pos) => {
 };
 
 const processPlayerData = (data, position, selectedOptions) => {
+    if (position === 't') {
+        return [
+            {
+                AbbName: data['AbbName'],
+                League: data['League'],
+                Division: data['Division'],
+                W: data['W'],
+                L: data['L'],
+                GB: data['GB'],
+            },
+        ];
+    }
+
     const about = ['aseason', 'AbbName', 'Age'];
     const string_data = ['aseason', 'Age', 'AbbName', 'AbbLevel'];
     const thousands = ['AVG', 'OBP', 'wOBA', 'BABIP', 'OPS', 'SLG'];
@@ -162,7 +184,7 @@ const processPlayerData = (data, position, selectedOptions) => {
 };
 
 const createTable = (data) => {
-    const about = ['aseason', 'AbbName'];
+    const about = ['aseason', 'AbbName', 'League', 'Division'];
     const table = document.createElement('table');
     const thead = table.createTHead();
     const headerRow = thead.insertRow();
@@ -191,10 +213,25 @@ const createTable = (data) => {
     return table.outerHTML;
 };
 
-const createToolTip = (data, id, pos, name) => {
+const createToolTip = (data, id, pos, name, rr_id, b_id) => {
     const table = createTable(data);
-    const fangraphsLink = `<sup class="tooltiplink"><a target="_blank" href=https://www.fangraphs.com/players/mike-trout/${id}/stats?position=${pos} target="_blank" class=tooltiplink>(F)</a></sup>`;
-    return `<span class="tooltip"><span class="tooltip-player">${name}</span><span class="tooltiptext">${table}</span>${fangraphsLink}</span>`;
+
+    const fLink =
+        pos == 't'
+            ? `https://www.fangraphs.com/teams/${rr_id}`
+            : `https://www.fangraphs.com/players/mike-trout/${id}/stats?position=${pos}`;
+
+    const bLink =
+        pos == 't'
+            ? `https://www.baseball-reference.com/teams/${b_id}`
+            : `https://www.baseball-reference.com/players/${b_id.slice(
+                  0,
+                  1
+              )}/${b_id}.shtml`;
+
+    const brefLink = `<a style="text-decoration:none; color: #620e0e;" target="_blank" href="${bLink}" target="_blank" >[BR]</a>`;
+    const fangraphsLink = `<a style="text-decoration:none; color: #29610d;" target="_blank" href="${fLink}" target="_blank" >[FG]</a>`;
+    return `<span class="tooltip"><span class="tooltip-player">${name}</span><span class="tooltiptext">${table}</span><p  class="tooltiplink">${fangraphsLink}  ${brefLink}</p></span>`;
 };
 
 /**
@@ -227,7 +264,7 @@ const removeClasses = () => {
 
 const runPage = async (settings) => {
     console.log('Running Page.');
-    const elements = document.querySelectorAll('p a, p, td');
+    const elements = document.querySelectorAll('p a, p');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
     const playerData = {};
     let replacedText;
@@ -239,12 +276,13 @@ const runPage = async (settings) => {
             const elementText = elements[i].innerText;
             const foundPlayers = findPlayerNames(jsonData, elementText);
             const originalText = elements[i].innerHTML;
+            const doneList = []; //only add tip to first appearance in each p
             replacedText = originalText;
 
             if (foundPlayers) {
                 for (let j = 0; j < foundPlayers.length; j++) {
                     try {
-                        const { id, pos, name } = foundPlayers[j];
+                        const { id, pos, name, rr_id, b_id } = foundPlayers[j];
 
                         if (!playerData[id]) {
                             const data = await fetchStats(id, pos);
@@ -254,21 +292,28 @@ const runPage = async (settings) => {
                             }
 
                             playerData[id] = processPlayerData(
-                                data['data'],
+                                data,
                                 pos,
                                 settings
                             );
                         }
 
-                        if (playerData[id].length > 0) {
+                        if (
+                            playerData[id].length > 0 &&
+                            !doneList.includes(id)
+                        ) {
                             const tooltip = createToolTip(
                                 playerData[id],
                                 id,
                                 pos,
-                                name
+                                name,
+                                rr_id,
+                                b_id
                             );
                             replacedText = replacedText.replace(name, tooltip);
+                            doneList.push(id);
                         }
+                        console.log(doneList);
                     } catch (error) {
                         console.error(error);
                     }
@@ -279,6 +324,7 @@ const runPage = async (settings) => {
     } catch (error) {
         console.error(error);
     }
+    console.log(playerData);
 };
 
 chrome.storage.sync.get('selectedOptions', function (items) {
