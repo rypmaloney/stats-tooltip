@@ -1,4 +1,4 @@
-window.defaultSettings = [
+export const defaultSettings = [
     { value: 'IP', selected: true, pos: 'p' },
     { value: 'W', selected: false, pos: 'p' },
     { value: 'L', selected: false, pos: 'p' },
@@ -29,7 +29,7 @@ window.defaultSettings = [
     { value: 'OBP', selected: false, pos: 'b' },
     { value: 'SLG', selected: false, pos: 'b' },
     { value: 'OPS', selected: false, pos: 'b' },
-    { value: 'BABPI', selected: false, pos: 'b' },
+    { value: 'BABIP', selected: false, pos: 'b' },
     { value: 'wOBA', selected: false, pos: 'b' },
     { value: 'wRC+', selected: true, pos: 'b' },
     { value: 'WAR', selected: true, pos: 'b' },

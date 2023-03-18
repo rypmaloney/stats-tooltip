@@ -27,72 +27,55 @@ const buildList = (options, pParent, bParent) => {
         parent.appendChild(container);
     });
 };
-
 const addCheckListeners = (checkboxes) => {
-    checkboxes.forEach(function (checkbox) {
-        checkbox.addEventListener('change', function () {
-            let selectedOptions = [];
+    const addOption = (checkbox, selectedOptions) => {
+        const value = checkbox.id;
+        const selected = checkbox.checked;
+        const pos = checkbox.getAttribute('data-pos');
+        selectedOptions.push({ value, selected, pos });
+    };
 
-            checkboxes.forEach(function (checkbox) {
+    checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const selectedOptions = [];
+
+            for (const checkbox of checkboxes) {
                 if (
-                    selectedOptions.filter(
-                        (o) => o.pos == 'p' && o.selected == true
-                    ).length > 7 ||
-                    selectedOptions.filter(
-                        (o) => o.pos != 'p' && o.selected == true
-                    ).length > 7
+                    selectedOptions.filter((o) => o.pos == 'p' && o.selected)
+                        .length > 10 ||
+                    selectedOptions.filter((o) => o.pos != 'p' && o.selected)
+                        .length > 10
                 ) {
                     postError(
-                        'Selecting more than 7 stats may cause the tooltip to run off the page.'
+                        'Selecting more than 10 stats may cause the tooltip to run off the page.'
                     );
                 } else {
                     postError('');
                 }
 
-                if (checkbox.checked) {
-                    selectedOptions.push({
-                        value: checkbox.id,
-                        selected: true,
-                        pos: checkbox.getAttribute('data-pos'),
-                    });
-                } else {
-                    selectedOptions.push({
-                        value: checkbox.id,
-                        selected: false,
-                        pos: checkbox.getAttribute('data-pos'),
-                    });
-                }
+                addOption(checkbox, selectedOptions);
+            }
+
+            chrome.storage.sync.set({ selectedOptions }, () => {
+                console.log('Settings saved');
             });
-            console.log(selectedOptions);
 
-            chrome.storage.sync.set(
-                { selectedOptions: selectedOptions },
-                function () {
-                    console.log('Settings saved');
-                }
-            );
-
-            chrome.tabs.query(
-                { active: true, currentWindow: true },
-                function (tabs) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        selectedOptions: selectedOptions,
-                    });
-                }
-            );
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { selectedOptions });
+            });
         });
     });
 };
+
 //chrome.storage.sync.clear()
 chrome.storage.sync.get('selectedOptions', function (items) {
     let settings = defaultSettings;
-    if (items.selectedOptions != undefined) {
-        settings = items.selectedOptions;
-    }
+    if (items.selectedOptions != undefined) settings = items.selectedOptions;
 
     const bContainer = document.getElementById('b-container');
     const pContainer = document.getElementById('p-container');
     buildList(settings, pContainer, bContainer);
+
     const checkboxes = document.querySelectorAll('input[type=checkbox]');
     addCheckListeners(checkboxes);
 });

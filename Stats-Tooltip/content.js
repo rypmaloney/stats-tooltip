@@ -1,5 +1,4 @@
 //chrome.storage.sync.clear();
-//import { defaultSettings } from './settings.js';
 
 async function loadJsonFile(filename) {
     try {
@@ -72,7 +71,6 @@ const findPlayerNames = (jsonData, paragraph) => {
         if (jsonData.hasOwnProperty(ua_match)) {
             names.push({
                 id: jsonData[ua_match]['graph_id'],
-                f_id: jsonData[ua_match]['graph_id'],
                 b_id: jsonData[ua_match]['id_player'],
                 rr_id: jsonData[ua_match]['rr'],
                 name: match,
@@ -87,7 +85,6 @@ const findPlayerNames = (jsonData, paragraph) => {
                 if (jsonData.hasOwnProperty(ua_split)) {
                     names.push({
                         id: jsonData[ua_split]['graph_id'],
-                        f_id: jsonData[ua_split]['graph_id'],
                         b_id: jsonData[ua_split]['id_player'],
                         rr_id: jsonData[ua_split]['rr'],
                         name: split,
@@ -100,23 +97,19 @@ const findPlayerNames = (jsonData, paragraph) => {
 
     return names;
 };
-
-const fetchStats = async (playerId, pos) => {
-    let url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
-    if (pos === 't') url = `https://www.fangraphs.com/api/menu/menu-standings`;
+async function fetchStats(playerId, pos) {
+    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-
-        if (pos === 't') return data.filter((t) => t['AbbName'] == playerId)[0]; //this is the ABBR
         return data['data'];
     } catch (error) {
         console.error(error);
     }
-};
+}
 
 const getSelectedValuesByPos = (settings, pos) => {
     return settings
@@ -124,23 +117,30 @@ const getSelectedValuesByPos = (settings, pos) => {
         .map((obj) => obj.value);
 };
 
-const processPlayerData = (data, position, selectedOptions) => {
-    if (position === 't') {
-        return [
-            {
-                AbbName: data['AbbName'],
-                League: data['League'],
-                Division: data['Division'],
-                W: data['W'],
-                L: data['L'],
-                GB: data['GB'],
-            },
-        ];
-    }
-
-    const about = ['aseason', 'AbbName', 'Age'];
-    const string_data = ['aseason', 'Age', 'AbbName', 'AbbLevel'];
+const formatData = (data, key) => {
     const thousands = ['AVG', 'OBP', 'wOBA', 'BABIP', 'OPS', 'SLG'];
+    const tens = ['wRC+'];
+    const string_data = ['aseason', 'Age', 'AbbName', 'AbbLevel'];
+
+    if (!string_data.includes(key)) {
+        if (thousands.includes(key)) return Math.round(data * 1000) / 1000;
+        if (tens.includes(key)) return Math.round(data * 10) / 10;
+        return Math.round(data * 100) / 100;
+    }
+    return data;
+};
+
+/**
+ * Process player data to extract the relevant  metadata based on the player's position and the selected options.
+ *
+ * @param {Array} data - An array of objects containing player data.
+ * @param {String} position - The player's position ('p' for pitcher, 'b' for batter).
+ * @param {Array} selectedOptions - An array of objects containing the selected options.
+ * @returns {Array} - An array of objects containing the player metadata that can be used to fetch.
+ */
+const processPlayerData = (data, position, selectedOptions) => {
+    const about = ['aseason', 'AbbName', 'Age'];
+    const projections = ['ATC'];
 
     keysToInclude =
         position === 'P'
@@ -162,18 +162,16 @@ const processPlayerData = (data, position, selectedOptions) => {
         const team = data[j]['Team'];
 
         if (
-            previousYears.includes(aseasonYear) &&
-            team != 'Average' &&
-            data[j].hasOwnProperty('WAR')
+            (previousYears.includes(aseasonYear) &&
+                team != 'Average' &&
+                data[j].hasOwnProperty('WAR')) ||
+            projections.includes(team)
         ) {
             const playerDataObject = {};
             keysToInclude.forEach((key) => {
                 let tdata = data[j][key];
-                if (!string_data.includes(key)) {
-                    if (thousands.includes(key)) {
-                        tdata = Math.round(tdata * 1000) / 1000;
-                    } else tdata = Math.round(tdata * 100) / 100;
-                }
+                tdata = formatData(tdata, key);
+
                 playerDataObject[key] = tdata;
             });
             playerDataList.push(playerDataObject);
@@ -229,9 +227,16 @@ const createToolTip = (data, id, pos, name, rr_id, b_id) => {
                   1
               )}/${b_id}.shtml`;
 
-    const brefLink = `<a style="text-decoration:none; color: #620e0e;" target="_blank" href="${bLink}" target="_blank" >[BR]</a>`;
-    const fangraphsLink = `<a style="text-decoration:none; color: #29610d;" target="_blank" href="${fLink}" target="_blank" >[FG]</a>`;
-    return `<span class="tooltip"><span class="tooltip-player">${name}</span><span class="tooltiptext">${table}</span><p  class="tooltiplink">${fangraphsLink}  ${brefLink}</p></span>`;
+    const brefLink = `<a href="${bLink}" style="text-decoration:none; color: #620e0e;">[BR]</a>`;
+    const fangraphsLink = `<a href="${fLink}" style="text-decoration:none; color: #29610d;">[FG]</a>`;
+
+    return `
+        <span class="tooltip">
+            <span class="tooltip-player">${name}</span>
+            <span class="tooltiptext">${table}</span>
+            <p class="tooltiplink">${fangraphsLink} ${brefLink}</p>
+        </span>
+    `;
 };
 
 /**
@@ -254,77 +259,89 @@ const removeTooltips = () => {
  * Some websites insert styles on tables automatically with javascript.
  * This ensures only the tooltip styles are applied to the table.
  */
-const removeClasses = () => {
+const removeTableClasses = () => {
     const tables = document.querySelectorAll('.tooltiptext table');
     tables.forEach((element) => {
         element.classList.remove(...element.classList);
     });
-    console.log('Removed table classes.');
 };
 
+const processElement = async (element, foundPlayers, playerData, settings) => {
+    const originalText = element.innerHTML;
+    const doneList = []; //only add tip to first appearance in each p
+    let processedText = originalText;
+    const elementData = { ...playerData };
+
+    if (foundPlayers) {
+        for (const player of foundPlayers) {
+            try {
+                const { id, pos, name, rr_id, b_id } = player;
+
+                if (!elementData[id]) {
+                    // Player not in local cache, set
+                    const data = await fetchStats(id, pos);
+
+                    if (!data) {
+                        continue;
+                    }
+
+                    elementData[id] = processPlayerData(data, pos, settings);
+                }
+
+                if (elementData[id].length > 0 && !doneList.includes(id)) {
+                    // get from cache
+                    const tooltip = createToolTip(
+                        elementData[id],
+                        id,
+                        pos,
+                        name,
+                        rr_id,
+                        b_id
+                    );
+
+                    processedText = processedText.replace(name, tooltip);
+                    doneList.push(id);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    }
+    element.innerHTML = processedText;
+
+    return elementData;
+};
+
+/**
+ * Processes the text content of the page and replaces the names of baseball players with
+ * tooltips displaying their statistics. Uses a mapping file and user-selected options to fetch
+ * the necessary data and create the tooltips. Modifies the HTML content of the page in place.
+ *
+ * @param {Object} settings - User-selected options for data display.
+ * @returns {void}
+ */
 const runPage = async (settings) => {
     console.log('Running Page.');
-    const elements = document.querySelectorAll('p a, p');
+    const elements = document.querySelectorAll('p a, p, li');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
-    const playerData = {};
-    let replacedText;
+    let playerData = {};
 
     try {
         const jsonData = await loadJsonFile(striptJsonUrl);
 
-        for (let i = 0; i < elements.length; i++) {
-            const elementText = elements[i].innerText;
+        for (const element of elements) {
+            const elementText = element.innerText;
             const foundPlayers = findPlayerNames(jsonData, elementText);
-            const originalText = elements[i].innerHTML;
-            const doneList = []; //only add tip to first appearance in each p
-            replacedText = originalText;
-
-            if (foundPlayers) {
-                for (let j = 0; j < foundPlayers.length; j++) {
-                    try {
-                        const { id, pos, name, rr_id, b_id } = foundPlayers[j];
-
-                        if (!playerData[id]) {
-                            const data = await fetchStats(id, pos);
-
-                            if (!data) {
-                                continue;
-                            }
-
-                            playerData[id] = processPlayerData(
-                                data,
-                                pos,
-                                settings
-                            );
-                        }
-
-                        if (
-                            playerData[id].length > 0 &&
-                            !doneList.includes(id)
-                        ) {
-                            const tooltip = createToolTip(
-                                playerData[id],
-                                id,
-                                pos,
-                                name,
-                                rr_id,
-                                b_id
-                            );
-                            replacedText = replacedText.replace(name, tooltip);
-                            doneList.push(id);
-                        }
-                        console.log(doneList);
-                    } catch (error) {
-                        console.error(error);
-                    }
-                }
-            }
-            elements[i].innerHTML = replacedText;
+            playerData = await processElement(
+                element,
+                foundPlayers,
+                playerData,
+                settings
+            );
         }
     } catch (error) {
         console.error(error);
     }
-    console.log(playerData);
 };
 
 chrome.storage.sync.get('selectedOptions', function (items) {
@@ -342,7 +359,7 @@ chrome.storage.sync.get('selectedOptions', function (items) {
 
     window.addEventListener('load', function () {
         setTimeout(() => {
-            removeClasses();
+            removeTableClasses();
         }, 1500);
     });
 });
@@ -352,5 +369,5 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         removeTooltips();
         runPage(request.selectedOptions);
     }
-    removeClasses();
+    removeTableClasses();
 });

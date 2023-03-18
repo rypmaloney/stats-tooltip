@@ -2,105 +2,66 @@
 .tooltiptext table {
     all: unset
 }
+
+
 .tooltiptext  table,.tooltiptext  caption,.tooltiptext  tbody,.tooltiptext  tfoot,.tooltiptext  thead,.tooltiptext  tr, .tooltiptext th, .tooltiptext td {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    outline: 0;
-    font-size: 100%;
-    vertical-align: baseline;
-    background: transparent;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    outline: 0 !important;
+    font-size: 100% !important;
+    vertical-align: baseline !important;
+    background: transparent !important;
+    color: white !important;
 }
 
-
-
-.tooltiplink{
-    vertical-align: super;
-    text-decoration: none;
-    font-size: 7px;
-    color:  rgb(29, 110, 4) !important;
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
-    padding-left: 1px;
+.tooltip-player{
+    text-decoration: underline;
+    text-decoration-color: rgb(80, 93, 82);
+    text-underline-offset: 8px;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
 }
-
-
-.tooltip:link{
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.tooltip {
-    position: relative;
-    display: inline-block;
-    line-height: 1;
-    padding-bottom: 0 !important;
-    border-bottom: 3px dotted rgb(29, 110, 4);
-}
-
-
-.tooltiptext{
-    width: fit-content;
-    z-index: 10000;
-    font-size: 13px;
-    line-height: 1em;
-    font-size: 100 !important;
-    background-color: #555;
-    font-weight: 300;
-
-}
-
 
 .tooltip .tooltiptext {
-    visibility: hidden;
     font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     color: #fff;
     text-align: center;
     border-radius: 6px;
     padding: 5px 0;
-    position: absolute;
-
-
-}
-
-/* Position tooltip below text by default */
-.tooltip .tooltiptext {
-    bottom: 150%;
-    left: 50%;
-    margin-left: -200px;
-    /* Use these properties to keep tooltip within bounds */
-    left: 0;
-    right: 0;
-    margin: auto;
-}
-
-/* Position tooltip above text if it doesn't fit below */
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-    /* If tooltip doesn't fit below, position it above */
-    bottom: auto;
-    top: 150%;
-    margin-top: 5px;
-    /* Use these properties to keep tooltip within bounds */
-    left: 0;
-    right: 0;
-    margin: auto;
-}
-
-/* Add max-height to tooltip to ensure it doesn't overflow */
-.tooltip .tooltiptext {
     max-height: 300px;
     overflow-y: auto;
-    overflow-x: scr;
+    overflow-x: scroll;
 }
 
-.tooltiptext {
-    color: inherit;
-    text-decoration: inherit;
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    display: block;
+    bottom: auto;
+    top: 130%;
+    margin-top: 5px;
+    left: 0;
+    right: 0;
+    margin: auto;
+}
+
+.tooltip {
+    position: relative;
+    cursor: pointer;
+    display: inline-block;
 }
 .tooltiptext {
+    position: absolute;
     padding: 7px;
+    display: none;
+    width: fit-content;
+    z-index: 1000 !important;
+    font-size: 11px !important;
+    background-color: #555;
+    font-weight: 300;
 }
+
 .tooltiptext table {
     font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     border-collapse: separate;
@@ -109,9 +70,23 @@
   }
 
 .tooltiptext thead {
-    font-weight: 800;
-    border-bottom: 1px solid white;
+    font-weight: 800 !important;
+    border-bottom: 1px solid white !important;
 }
 .tooltiptext td {
-    padding: 4px 0;
+    padding: 4px 0 !important;
+}
+.tooltiplink{
+    font-family:'Arial Narrow', sans-serif;
+    vertical-align: super;
+    font-size: .5em !important;
+    display: inline-block;
+    line-height: .3em !important;
+    padding-left: 2px !important;
+    font-weight: 100 !important;
+}
+
+.tooltiplink a {
+    display: inline-block;
+    font-weight: 100;
 }

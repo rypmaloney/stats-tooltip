@@ -7,8 +7,15 @@
     "host_permissions": ["*://*/*"],
     "content_scripts": [
         {
+            "exclude_matches": [
+                "*://theathletic.com/",
+                "*://www.mlb.com/",
+                "*://www.reddit.com/*",
+                "*://www.twitter.com/*",
+                "*://www.fangraphs.com/"
+            ],
             "matches": ["*://*/*"],
-            "exclude_matches": ["https://theathletic.com/"],
+
             "js": ["content.js"],
             "css": ["content.css"],
             "type": "module"
