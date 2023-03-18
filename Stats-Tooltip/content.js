@@ -1,5 +1,51 @@
 //chrome.storage.sync.clear();
 
+class StatCache {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.maxAge = 24 * 60 * 60 * 1000; // 24hrs
+        this.cache = this.initialize();
+    }
+    initialize() {
+        const cache = localStorage.getItem('statCache');
+        if (cache) {
+            console.log('getting cache');
+            return JSON.parse(cache);
+        }
+        console.log('setting cache');
+        localStorage.setItem('statCache', '{}');
+        return {};
+    }
+
+    set(key, value) {
+        // add the key-value pair to the cache
+        this.cache[key] = {
+            value,
+            expiration: Date.now() + this.maxAge,
+        };
+        // remove the oldest entry if we have exceeded the cache size
+        if (Object.keys(this.cache).length > this.maxSize) {
+            const oldestKey = Object.keys(this.cache)[0];
+            delete this.cache[oldestKey];
+        }
+        console.log('setting to local storage');
+        localStorage.setItem('statCache', JSON.stringify(this.cache));
+        return this.cache[key];
+    }
+
+    get(key) {
+        if (this.cache[key] != null) {
+            if (Date.now() < this.cache[key].expiration) {
+                console.log('retreiving from local storage');
+                return this.cache[key];
+            } else {
+                delete this.cache[key];
+            }
+        }
+        return null;
+    }
+}
+
 async function loadJsonFile(filename) {
     try {
         const response = await fetch(filename);
@@ -43,6 +89,8 @@ function removeAccents(str) {
                 return 'O';
             case 'Ú':
                 return 'U';
+            case 'ñ':
+                return 'ñ';
         }
     });
 }
@@ -97,14 +145,28 @@ const findPlayerNames = (jsonData, paragraph) => {
 
     return names;
 };
-async function fetchStats(playerId, pos) {
+
+/**
+ * Retrieve player data from cache or API.
+ * Player data is stored on pages local storage.
+ */
+async function fetchStats(playerId, pos, cache) {
     const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
     try {
+        const key = `${playerId}-${pos}`;
+
+        if (cache.get(key)) {
+            return cache.get(key).value;
+        }
+
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+
+        cache.set(key, data['data']);
+
         return data['data'];
     } catch (error) {
         console.error(error);
@@ -266,32 +328,28 @@ const removeTableClasses = () => {
     });
 };
 
-const processElement = async (element, foundPlayers, playerData, settings) => {
+const processElement = async (element, foundPlayers, settings, cache) => {
     const originalText = element.innerHTML;
     const doneList = []; //only add tip to first appearance in each p
     let processedText = originalText;
-    const elementData = { ...playerData };
 
     if (foundPlayers) {
         for (const player of foundPlayers) {
             try {
                 const { id, pos, name, rr_id, b_id } = player;
 
-                if (!elementData[id]) {
-                    // Player not in local cache, set
-                    const data = await fetchStats(id, pos);
+                // Retreive player from cache or Fangraphs
+                const data = await fetchStats(id, pos, cache);
 
-                    if (!data) {
-                        continue;
-                    }
-
-                    elementData[id] = processPlayerData(data, pos, settings);
+                if (!data) {
+                    continue;
                 }
 
-                if (elementData[id].length > 0 && !doneList.includes(id)) {
-                    // get from cache
+                const processedData = processPlayerData(data, pos, settings);
+
+                if (processedData.length > 0 && !doneList.includes(id)) {
                     const tooltip = createToolTip(
-                        elementData[id],
+                        processedData,
                         id,
                         pos,
                         name,
@@ -309,7 +367,7 @@ const processElement = async (element, foundPlayers, playerData, settings) => {
     }
     element.innerHTML = processedText;
 
-    return elementData;
+    return true;
 };
 
 /**
@@ -318,13 +376,13 @@ const processElement = async (element, foundPlayers, playerData, settings) => {
  * the necessary data and create the tooltips. Modifies the HTML content of the page in place.
  *
  * @param {Object} settings - User-selected options for data display.
+ *  @param {Object} cache - Local storage cache object
  * @returns {void}
  */
-const runPage = async (settings) => {
+const runPage = async (settings, cache) => {
     console.log('Running Page.');
     const elements = document.querySelectorAll('p a, p, li');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
-    let playerData = {};
 
     try {
         const jsonData = await loadJsonFile(striptJsonUrl);
@@ -332,42 +390,45 @@ const runPage = async (settings) => {
         for (const element of elements) {
             const elementText = element.innerText;
             const foundPlayers = findPlayerNames(jsonData, elementText);
-            playerData = await processElement(
-                element,
-                foundPlayers,
-                playerData,
-                settings
-            );
+            await processElement(element, foundPlayers, settings, cache);
         }
     } catch (error) {
         console.error(error);
     }
 };
 
-chrome.storage.sync.get('selectedOptions', function (items) {
-    (async () => {
-        // workaround to import in non-module
-        const src = chrome.runtime.getURL('settings.js');
-        const settings = await import(src);
+(() => {
+    let cache = new StatCache(20);
 
-        let options = settings.defaultSettings;
-        if (items.selectedOptions !== undefined)
-            options = items.selectedOptions;
+    chrome.storage.sync.get('selectedOptions', function (items) {
+        (async () => {
+            // workaround to import in non-module
+            const src = chrome.runtime.getURL('settings.js');
+            const settings = await import(src);
 
-        runPage(options);
-    })();
+            let options = settings.defaultSettings;
+            if (items.selectedOptions !== undefined)
+                options = items.selectedOptions;
 
-    window.addEventListener('load', function () {
-        setTimeout(() => {
-            removeTableClasses();
-        }, 1500);
+            runPage(options, cache);
+        })();
+
+        window.addEventListener('load', function () {
+            setTimeout(() => {
+                removeTableClasses();
+            }, 1500);
+        });
     });
-});
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (request.selectedOptions !== undefined) {
-        removeTooltips();
-        runPage(request.selectedOptions);
-    }
-    removeTableClasses();
-});
+    chrome.runtime.onMessage.addListener(function (
+        request,
+        sender,
+        sendResponse
+    ) {
+        if (request.selectedOptions !== undefined) {
+            removeTooltips();
+            runPage(request.selectedOptions, cache);
+        }
+        removeTableClasses();
+    });
+})();
