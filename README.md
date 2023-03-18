@@ -4,13 +4,12 @@ Extension to dynamically insert hover-on tooltips for MLB active players. Provid
 Select the stats you want to display for both pitchers and position players.
 ![Settings for tooltip](./images/settings_small.png)
 
-Player ID mapping provided by: https://www.smartfantasybaseball.com
-Samples below from Fangraphs, the Athletic, and MLBtradeRumors
+Samples below from Fangraphs, the Athletic, and MLBtradeRumors. This tooltip should work on most articles referencing currently active MLB players.
 
-![Settings for tooltip](./images/at_small.png)
+![the Athletic](./images/at_small.png)
 
-![Settings for tooltip](./images/fg_small.png)
+![Fangraphs](./images/fg_small.png)
 
-![Settings for tooltip](./images/mtr_small.png)
+![MlbTradeRumors](./images/mtr_small.png)
 
-Stats are pulled from Fangraph
+Stats are pulled from Fangraph. Player ID mapping provided by: https://www.smartfantasybaseball.com
