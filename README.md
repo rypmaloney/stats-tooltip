@@ -6,8 +6,11 @@ Select the stats you want to display for both pitchers and position players.
 
 Player ID mapping provided by: https://www.smartfantasybaseball.com
 Samples below from Fangraphs, the Athletic, and MLBtradeRumors
+
 ![Fangraphs image]((./images/fg.png)
+
 ![Athletic image]((./images/at.png)
+
 ![MTR image]((./images/mtr.png)
 
 Stats are pulled from Fangraph
