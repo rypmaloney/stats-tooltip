@@ -44,9 +44,9 @@
     visibility: visible;
     display:inline-block !important;
     bottom: auto;
-    top: 130%;
+    top: 150%;
     margin-top: 5px;
-    left: 0;
+    left: -20%;
     right: 0;
     margin: auto;
 }
@@ -99,6 +99,7 @@
 
 .tooltiplink a img {
     opacity:1;
+    display: inline;
     border-radius: 1px ;
     margin:0 1px;
     width:  .8em !important;

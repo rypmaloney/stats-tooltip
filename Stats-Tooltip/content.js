@@ -1,71 +1,51 @@
-//chrome.storage.sync.clear();
-
-class localStorageCache {
-    constructor(maxSize) {
-        this.maxSize = maxSize;
-        this.maxAge = 24 * 60 * 60 * 1000; // 24hrs
-        this.cache = this.initialize();
-    }
-    initialize() {
-        const cache = localStorage.getItem('statCache');
-        if (cache) {
-            console.log('getting cache');
-            return JSON.parse(cache);
-        }
-        console.log('setting cache');
-        localStorage.setItem('statCache', '{}');
-        return {};
-    }
-
-    set(key, value) {
-        // add the key-value pair to the cache
-        this.cache[key] = {
-            value,
-            expiration: Date.now() + this.maxAge,
-        };
-        // remove the oldest entry if we have exceeded the cache size
-        if (Object.keys(this.cache).length > this.maxSize) {
-            const oldestKey = Object.keys(this.cache)[0];
-            delete this.cache[oldestKey];
-        }
-        console.log('setting to local storage');
-        localStorage.setItem('statCache', JSON.stringify(this.cache));
-        return this.cache[key];
-    }
-
-    get(key) {
-        if (this.cache[key] != null) {
-            if (Date.now() < this.cache[key].expiration) {
-                console.log('retreiving from local storage');
-                return this.cache[key].value;
-            } else {
-                delete this.cache[key];
-            }
-        }
-        return null;
-    }
-}
-
 class ChromeStorageCache {
     constructor(maxSize) {
         this.maxSize = maxSize;
         this.maxAge = 24 * 60 * 60 * 1000; // 24hrs
-        this.cache = this.initialize();
+        this.cache = {};
+        this.init = async () => {
+            try {
+                const cache = await this._getFromStorage('statCache');
+                if (cache) {
+                    this.cache = cache;
+                } else {
+                    this.cache = {};
+                    await this._setInStorage('statCache', {});
+                }
+                let cacheSize = Object.keys(this.cache).length;
+                console.log(`StatTooltip - cache size: ${cacheSize}.`);
+            } catch (error) {
+                console.log(`Error establishing chromeLocalStorage. ${error}.`);
+            }
+        };
+        this.init();
+    }
+    async _getFromStorage(key) {
+        // Gets cache object
+        try {
+            return new Promise((resolve) => {
+                chrome.storage.local.get([key], (result) => {
+                    resolve(result[key]);
+                });
+            });
+        } catch (error) {
+            console.error(`Error getting from chromeLocalStorage: ${error}`);
+            return null;
+        }
     }
 
-    async initialize() {
+    async _setInStorage(key, value) {
+        // Sets cache object
         try {
-            const cache = await this.getFromStorage('statCache');
-            if (cache) {
-                console.log('getting cache');
-                return cache;
-            }
-            console.log('setting cache');
-            await this.setInStorage('statCache', {});
+            return new Promise((resolve) => {
+                chrome.storage.local.set({ [key]: value }, () => {
+                    resolve();
+                });
+            });
         } catch (error) {
-            console.log(`Error establishing chromeLocalStorage. ${error}.`);
+            console.error(`Error setting to chromeLocalStorage: ${error}`);
+            return null;
         }
-        return {};
     }
 
     async set(key, value) {
@@ -79,45 +59,26 @@ class ChromeStorageCache {
             const oldestKey = Object.keys(this.cache)[0];
             delete this.cache[oldestKey];
         }
-        console.log('setting to storage');
-        await this.setInStorage('statCache', this.cache);
         return this.cache[key];
     }
 
     async get(key) {
-        const cachedItem = await this.getFromStorage('statCache');
-        if (cachedItem && cachedItem[key] != null) {
-            if (Date.now() < cachedItem[key].expiration) {
-                console.log('retreiving from storage');
-                return cachedItem[key].value;
+        // Check for key in cache obj, not storage
+        if (this.cache[key] != undefined) {
+            if (Date.now() < this.cache[key].expiration) {
+                return this.cache[key].value;
             } else {
-                delete cachedItem[key];
-                await this.setInStorage('statCache', cachedItem);
+                delete this.cache[key];
             }
         }
         return null;
     }
 
-    async getFromStorage(key) {
+    async closeCache() {
         try {
-            return new Promise((resolve) => {
-                chrome.storage.local.get([key], (result) => {
-                    resolve(result[key]);
-                });
-            });
-        } catch (error) {
-            console.error(`Error getting from chromeLocalStorage: ${error}`);
-            return null;
-        }
-    }
-
-    async setInStorage(key, value) {
-        try {
-            return new Promise((resolve) => {
-                chrome.storage.local.set({ [key]: value }, () => {
-                    resolve();
-                });
-            });
+            await this._setInStorage('statCache', this.cache);
+            let cacheSize = Object.keys(this.cache).length;
+            console.log(`StatTooltip - cache size: ${cacheSize}.`);
         } catch (error) {
             console.error(`Error setting to chromeLocalStorage: ${error}`);
             return null;
@@ -191,6 +152,7 @@ const findPlayerNames = (jsonData, paragraph) => {
     if (matches === null) {
         return false;
     }
+
     const names = [];
 
     for (const match of matches) {
@@ -238,6 +200,7 @@ async function fetchStats(playerId, pos, cache) {
         const key = `${playerId}-${pos}`;
 
         let cachedData = await cache.get(key);
+
         if (cachedData) {
             return cachedData;
         }
@@ -327,12 +290,12 @@ const processPlayerData = (data, position, selectedOptions) => {
 };
 
 const createTable = (data) => {
-    const about = ['aseason', 'AbbName', 'League', 'Division'];
+    const about = ['aseason', 'AbbName', 'League', 'Division', 'Age'];
     const table = document.createElement('table');
     const thead = table.createTHead();
     const headerRow = thead.insertRow();
 
-    // create header cells in one line using array.map()
+    // create header cells in one line
     Object.keys(data[0]).map((key) => {
         const headerCell = document.createElement('th');
         if (!about.includes(key)) {
@@ -344,13 +307,15 @@ const createTable = (data) => {
     const tbody = document.createElement('tbody');
     table.appendChild(tbody);
 
-    // create data rows in one line using array.forEach()
+    // create data rows in one line
     data.forEach((obj) => {
         const row = tbody.insertRow();
-        Object.values(obj).forEach((val) => {
+        for (const [key, val] of Object.entries(obj)) {
             const cell = row.insertCell();
-            cell.textContent = val;
-        });
+            let content = val;
+            if (isNaN(parseInt(val)) && !about.includes(key)) content = 'n/a';
+            cell.textContent = content;
+        }
     });
 
     return table.outerHTML;
@@ -471,10 +436,11 @@ const processElement = async (element, foundPlayers, settings, cache) => {
  *  @param {Object} cache - Local storage cache object
  * @returns {void}
  */
-const runPage = async (settings, cache) => {
-    console.log('Running Page.');
+const runPage = async (settings) => {
+    console.log('StatTooltip - Running Page.');
     const elements = document.querySelectorAll('p a, p, li a');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
+    const cache = new ChromeStorageCache(150);
 
     try {
         const jsonData = await loadJsonFile(striptJsonUrl);
@@ -487,6 +453,9 @@ const runPage = async (settings, cache) => {
     } catch (error) {
         console.error(error);
     }
+
+    cache.closeCache();
+    console.log('StatTooltip - Page complete.');
 };
 
 /**
@@ -494,8 +463,6 @@ const runPage = async (settings, cache) => {
  *  Set cache, get settings, run page, run cleanup, add event listener for settings change
  */
 (() => {
-    //let cache = new StatCache(50);
-    let cache = new ChromeStorageCache(50);
     chrome.storage.sync.get('selectedOptions', function (items) {
         (async () => {
             // workaround to import in non-module
@@ -506,14 +473,16 @@ const runPage = async (settings, cache) => {
             if (items.selectedOptions !== undefined)
                 options = items.selectedOptions;
 
-            runPage(options, cache);
-        })();
+            //Fantrax messes with their dom after page load, dirty workaround
+            let time = 0;
+            if (location.href.includes('fantrax')) {
+                time = 3000;
+            }
 
-        window.addEventListener('load', function () {
             setTimeout(() => {
-                removeTableClasses();
-            }, 1500);
-        });
+                runPage(options);
+            }, time);
+        })();
     });
 
     chrome.runtime.onMessage.addListener(function (
