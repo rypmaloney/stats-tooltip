@@ -26,7 +26,7 @@
                 "*://razzball.com/*"
             ],
             "matches": [
-                "<all_urls>",
+                "*://www.fantrax.com/news/mlb/*",
                 "*://theathletic.com/*",
                 "*://www.fangraphs.com/*",
                 "*://www.mlbtraderumors.com/*",
