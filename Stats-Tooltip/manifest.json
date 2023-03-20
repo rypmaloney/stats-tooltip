@@ -3,18 +3,77 @@
     "name": "Stats Tooltip",
     "description": "Enrich webpages with baseball data.",
     "version": "1.0",
-    "permissions": ["tabs", "activeTab", "scripting", "storage"],
+    "permissions": [
+        "tabs",
+        "activeTab",
+        "scripting",
+        "storage",
+        "unlimitedStorage"
+    ],
     "host_permissions": ["*://*/*"],
     "content_scripts": [
         {
             "exclude_matches": [
                 "*://theathletic.com/",
+                "*://theathletic.com/mlb/",
+                "*://theathletic.com/mlb/*/",
                 "*://www.mlb.com/",
+                "*://www.mlb.com/*/",
+                "*://www.nbcsports.com/mlb",
                 "*://www.reddit.com/*",
                 "*://www.twitter.com/*",
-                "*://www.fangraphs.com/"
+                "*://sports.yahoo.com/*",
+                "*://razzball.com/*"
             ],
-            "matches": ["*://*/*"],
+            "matches": [
+                "<all_urls>",
+                "*://theathletic.com/*",
+                "*://www.fangraphs.com/*",
+                "*://www.mlbtraderumors.com/*",
+                "*://www.si.com/*",
+                "*://www.espn.com/*",
+                "*://bleacherreport.com/articles/*",
+                "*://www.cbssports.com/*",
+                "*://www.mlb.com/*/*",
+                "*://www.foxsports.com/*",
+                "*://mlb.nbcsports.com/*",
+                "*://www.baseball-reference.com/*",
+                "*://www.sportingnews.com/*",
+                "*://www.rotoworld.com/*",
+                "*://www.mlbtr.com/*",
+                "*://www.pitcherlist.com/*",
+                "*://www.mlbpipeline.com/*",
+                "*://www.baseballamerica.com/*",
+                "*://www.mlbdepthcharts.com/*",
+                "*://www.fantasypros.com/*",
+                "*://www.beyondtheboxscore.com/*",
+                "*://deadspin.com/*",
+                "*://www.sbnation.com/mlb/*",
+                "*://www.batterypower.com/*",
+                "*://mlbcomblogs.mlblogs.com/*",
+                "*://www.thescore.com/*",
+                "*://twinsdaily.com/*",
+                "*://www.nbcsports.com/mlb/*",
+                "*://www.upi.com/Sports_News/MLB/*",
+                "*://www.yardbarker.com/mlb/*",
+                "*://www.usatoday.com/*",
+                "*://www.nytimes.com/*",
+                "*://www.washingtonpost.com/*",
+                "*://www.latimes.com/*",
+                "*://www.chicagotribune.com/*",
+                "*://www.sfgate.com/*",
+                "*://www.boston.com/*",
+                "*://www.miamiherald.com/*",
+                "*://www.azcentral.com/*",
+                "*://www.tampabay.com/*",
+                "*://www.foxsports.com/mlb/*",
+                "*://www.startribune.com/*",
+                "*://www.draysbay.com/*",
+                "*://fansided.com/*",
+                "*://www.lookoutlanding.com/*",
+                "*://www.baseballprospectus.com/*",
+                "*://www.theringer.com/*"
+            ],
 
             "js": ["content.js"],
             "css": ["content.css"],
@@ -32,7 +91,12 @@
     "web_accessible_resources": [
         {
             "matches": ["<all_urls>"],
-            "resources": ["map.json", "settings.js"]
+            "resources": [
+                "map.json",
+                "settings.js",
+                "images/fgLogo.jpg",
+                "images/brefLogo.jpg"
+            ]
         }
     ]
 }
