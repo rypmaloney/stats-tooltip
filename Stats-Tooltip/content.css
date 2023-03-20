@@ -1,10 +1,10 @@
 
-.tooltiptext table {
+.stats-tooltiptext table {
     all: unset
 }
 
 
-.tooltiptext  table,.tooltiptext  caption,.tooltiptext  tbody,.tooltiptext  tfoot,.tooltiptext  thead,.tooltiptext  tr, .tooltiptext th, .tooltiptext td {
+.stats-tooltiptext  table,.tooltiptext  caption,.stats-tooltiptext  tbody,.stats-tooltiptext  tfoot,.stats-tooltiptext  thead,.stats-tooltiptext  tr, .stats-tooltiptext th, .stats-tooltiptext td {
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
@@ -21,9 +21,11 @@
     text-underline-offset: 8px;
     text-decoration-style: dotted;
     text-decoration-thickness: 1px;
+    margin: 0;
+    padding: 0;
 }
 
-.tooltip .tooltiptext {
+.stats-tooltip .stats-tooltiptext {
     font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     color: #fff;
     text-align: center;
@@ -32,12 +34,15 @@
     max-height: 300px;
     overflow-y: auto;
     overflow-x: scroll;
+    word-break: normal;
+    overflow-wrap: normal;
+    font-style: normal;
 }
 
 
-.tooltip:hover .tooltiptext {
+.stats-tooltip:hover .stats-tooltiptext {
     visibility: visible;
-    display: block;
+    display:inline-block !important;
     bottom: auto;
     top: 130%;
     margin-top: 5px;
@@ -46,47 +51,58 @@
     margin: auto;
 }
 
-.tooltip {
+.stats-tooltip {
     position: relative;
     cursor: pointer;
-    display: inline-block;
+    display: inline-block !important;
+    line-height: 1;
+
 }
-.tooltiptext {
+.stats-tooltiptext {
+    visibility: hidden ;
+    display:none;
     position: absolute;
     padding: 7px;
-    display: none;
     width: fit-content;
-    z-index: 1000 !important;
+    z-index: 1000 ;
     font-size: 11px !important;
     background-color: #555;
     font-weight: 300;
 }
 
-.tooltiptext table {
+.stats-tooltiptext table {
     font-family: Verdana, Geneva, Tahoma, sans-serif !important;
     border-collapse: separate;
     border-spacing: 10px 0;
     border: none;
   }
 
-.tooltiptext thead {
+.stats-tooltiptext thead {
     font-weight: 800 !important;
     border-bottom: 1px solid white !important;
 }
-.tooltiptext td {
-    padding: 4px 0 !important;
+.stats-tooltiptext td {
+    padding: 4px !important;
 }
 .tooltiplink{
-    font-family:'Arial Narrow', sans-serif;
-    vertical-align: super;
-    font-size: .5em !important;
     display: inline-block;
-    line-height: .3em !important;
-    padding-left: 2px !important;
-    font-weight: 100 !important;
+    padding-left: 1px;
+
 }
 
 .tooltiplink a {
-    display: inline-block;
+    text-decoration: none ;
     font-weight: 100;
+    line-height: 1;
+
+}
+
+.tooltiplink a img {
+    opacity:1;
+    border-radius: 1px ;
+    margin:0 1px;
+    width:  .8em !important;
+    height: .8em;
+    padding:0;
+    border: none;
 }
