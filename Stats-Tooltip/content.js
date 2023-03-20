@@ -1,6 +1,6 @@
 //chrome.storage.sync.clear();
 
-class StatCache {
+class localStorageCache {
     constructor(maxSize) {
         this.maxSize = maxSize;
         this.maxAge = 24 * 60 * 60 * 1000; // 24hrs
@@ -37,12 +37,91 @@ class StatCache {
         if (this.cache[key] != null) {
             if (Date.now() < this.cache[key].expiration) {
                 console.log('retreiving from local storage');
-                return this.cache[key];
+                return this.cache[key].value;
             } else {
                 delete this.cache[key];
             }
         }
         return null;
+    }
+}
+
+class ChromeStorageCache {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.maxAge = 24 * 60 * 60 * 1000; // 24hrs
+        this.cache = this.initialize();
+    }
+
+    async initialize() {
+        try {
+            const cache = await this.getFromStorage('statCache');
+            if (cache) {
+                console.log('getting cache');
+                return cache;
+            }
+            console.log('setting cache');
+            await this.setInStorage('statCache', {});
+        } catch (error) {
+            console.log(`Error establishing chromeLocalStorage. ${error}.`);
+        }
+        return {};
+    }
+
+    async set(key, value) {
+        // add the key-value pair to the cache
+        this.cache[key] = {
+            value,
+            expiration: Date.now() + this.maxAge,
+        };
+        // remove the oldest entry if we have exceeded the cache size
+        if (Object.keys(this.cache).length > this.maxSize) {
+            const oldestKey = Object.keys(this.cache)[0];
+            delete this.cache[oldestKey];
+        }
+        console.log('setting to storage');
+        await this.setInStorage('statCache', this.cache);
+        return this.cache[key];
+    }
+
+    async get(key) {
+        const cachedItem = await this.getFromStorage('statCache');
+        if (cachedItem && cachedItem[key] != null) {
+            if (Date.now() < cachedItem[key].expiration) {
+                console.log('retreiving from storage');
+                return cachedItem[key].value;
+            } else {
+                delete cachedItem[key];
+                await this.setInStorage('statCache', cachedItem);
+            }
+        }
+        return null;
+    }
+
+    async getFromStorage(key) {
+        try {
+            return new Promise((resolve) => {
+                chrome.storage.local.get([key], (result) => {
+                    resolve(result[key]);
+                });
+            });
+        } catch (error) {
+            console.error(`Error getting from chromeLocalStorage: ${error}`);
+            return null;
+        }
+    }
+
+    async setInStorage(key, value) {
+        try {
+            return new Promise((resolve) => {
+                chrome.storage.local.set({ [key]: value }, () => {
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.error(`Error setting to chromeLocalStorage: ${error}`);
+            return null;
+        }
     }
 }
 
@@ -67,7 +146,7 @@ function getWordPairs(string) {
 }
 
 function removeAccents(str) {
-    return str.replace(/[áéíóúÁÉÍÓÚ]/g, function (match) {
+    return str.replace(/[ñáéíóúÁÉÍÓÚ]/g, function (match) {
         switch (match) {
             case 'á':
                 return 'a';
@@ -90,7 +169,7 @@ function removeAccents(str) {
             case 'Ú':
                 return 'U';
             case 'ñ':
-                return 'ñ';
+                return 'n';
         }
     });
 }
@@ -105,8 +184,9 @@ function removeAccents(str) {
  */
 const findPlayerNames = (jsonData, paragraph) => {
     const nameRegex =
-        /\b[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s(?:[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\s){0,4}[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+\b/g;
-    // a string that starts and ends with a word in title case (i.e. with an uppercase letter followed by lowercase letters or accented characters), and can have 0 to 4 additional words
+        /\b[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+(?:-[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+)*(?:\s[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+(?:-[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ]+)*){1,4}\b/g;
+
+    // a string that starts and ends with a word in title case (i.e. with an uppercase letter followed by lowercase letters or accented characters), and can have 1 to 4 additional words
     const matches = paragraph.match(nameRegex);
     if (matches === null) {
         return false;
@@ -148,15 +228,18 @@ const findPlayerNames = (jsonData, paragraph) => {
 
 /**
  * Retrieve player data from cache or API.
- * Player data is stored on pages local storage.
+ * Player data is stored in chrome.storage.local.
  */
 async function fetchStats(playerId, pos, cache) {
-    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=1678363774`;
+    const timeStamp = Math.floor(Date.now() / 1000);
+    const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=${timeStamp}`;
+
     try {
         const key = `${playerId}-${pos}`;
 
-        if (cache.get(key)) {
-            return cache.get(key).value;
+        let cachedData = await cache.get(key);
+        if (cachedData) {
+            return cachedData;
         }
 
         const response = await fetch(url);
@@ -165,7 +248,7 @@ async function fetchStats(playerId, pos, cache) {
         }
         const data = await response.json();
 
-        cache.set(key, data['data']);
+        await cache.set(key, data['data']);
 
         return data['data'];
     } catch (error) {
@@ -275,6 +358,8 @@ const createTable = (data) => {
 
 const createToolTip = (data, id, pos, name, rr_id, b_id) => {
     const table = createTable(data);
+    const fgLogo = chrome.runtime.getURL('images/fgLogo.jpg');
+    const brefLogo = chrome.runtime.getURL('images/brefLogo.jpg');
 
     const fLink =
         pos == 't'
@@ -289,14 +374,14 @@ const createToolTip = (data, id, pos, name, rr_id, b_id) => {
                   1
               )}/${b_id}.shtml`;
 
-    const brefLink = `<a href="${bLink}" style="text-decoration:none; color: #620e0e;">[BR]</a>`;
-    const fangraphsLink = `<a href="${fLink}" style="text-decoration:none; color: #29610d;">[FG]</a>`;
+    const brefLink = `<a href="${bLink}" target="_blank" style="text-decoration:none; color: #620e0e;"><img src="${brefLogo}"></a>`;
+    const fangraphsLink = `<a href="${fLink}" target="_blank" style="text-decoration:none; color: #29610d;"><img src="${fgLogo}"></a>`;
 
     return `
-        <span class="tooltip">
+        <span class="stats-tooltip">
             <span class="tooltip-player">${name}</span>
-            <span class="tooltiptext">${table}</span>
-            <p class="tooltiplink">${fangraphsLink} ${brefLink}</p>
+            <span class="stats-tooltiptext">${table}</span>
+            <div class="tooltiplink">${fangraphsLink}${brefLink}</div>
         </span>
     `;
 };
@@ -306,7 +391,7 @@ const createToolTip = (data, id, pos, name, rr_id, b_id) => {
  * Allows regenerating of tooltips on settings change.
  */
 const removeTooltips = () => {
-    const toolTips = document.querySelectorAll('.tooltip');
+    const toolTips = document.querySelectorAll('.stats-tooltip');
     toolTips.forEach((element) => {
         const playerName = element.querySelector('.tooltip-player').textContent;
         const playerNode = document.createTextNode(playerName);
@@ -322,12 +407,16 @@ const removeTooltips = () => {
  * This ensures only the tooltip styles are applied to the table.
  */
 const removeTableClasses = () => {
-    const tables = document.querySelectorAll('.tooltiptext table');
+    const tables = document.querySelectorAll('.stats-tooltiptext table');
     tables.forEach((element) => {
         element.classList.remove(...element.classList);
     });
 };
 
+/**
+ * Insert tooltip for first of each player that appears.
+ * Only insert first appearance. Only insert if they have data
+ */
 const processElement = async (element, foundPlayers, settings, cache) => {
     const originalText = element.innerHTML;
     const doneList = []; //only add tip to first appearance in each p
@@ -338,6 +427,9 @@ const processElement = async (element, foundPlayers, settings, cache) => {
             try {
                 const { id, pos, name, rr_id, b_id } = player;
 
+                if (doneList.includes(id)) {
+                    continue;
+                }
                 // Retreive player from cache or Fangraphs
                 const data = await fetchStats(id, pos, cache);
 
@@ -347,7 +439,7 @@ const processElement = async (element, foundPlayers, settings, cache) => {
 
                 const processedData = processPlayerData(data, pos, settings);
 
-                if (processedData.length > 0 && !doneList.includes(id)) {
+                if (processedData.length > 0) {
                     const tooltip = createToolTip(
                         processedData,
                         id,
@@ -381,7 +473,7 @@ const processElement = async (element, foundPlayers, settings, cache) => {
  */
 const runPage = async (settings, cache) => {
     console.log('Running Page.');
-    const elements = document.querySelectorAll('p a, p, li');
+    const elements = document.querySelectorAll('p a, p, li a');
     const striptJsonUrl = chrome.runtime.getURL('map.json');
 
     try {
@@ -397,9 +489,13 @@ const runPage = async (settings, cache) => {
     }
 };
 
+/**
+ * Overall control flow.
+ *  Set cache, get settings, run page, run cleanup, add event listener for settings change
+ */
 (() => {
-    let cache = new StatCache(20);
-
+    //let cache = new StatCache(50);
+    let cache = new ChromeStorageCache(50);
     chrome.storage.sync.get('selectedOptions', function (items) {
         (async () => {
             // workaround to import in non-module
