@@ -1,4 +1,5 @@
 import { defaultSettings } from './settings.js';
+
 const postError = (error) => {
     console.log();
     const errorMsg = document.getElementById('error');
@@ -50,7 +51,7 @@ const addCheckListeners = (checkboxes) => {
                         'Selecting more than 10 stats may cause the tooltip to run off the page.'
                     );
                 } else {
-                    postError('');
+                    postError('Refresh page to apply changes.');
                 }
 
                 addOption(checkbox, selectedOptions);
@@ -58,10 +59,6 @@ const addCheckListeners = (checkboxes) => {
 
             chrome.storage.sync.set({ selectedOptions }, () => {
                 console.log('Settings saved');
-            });
-
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                chrome.tabs.sendMessage(tabs[0].id, { selectedOptions });
             });
         });
     });

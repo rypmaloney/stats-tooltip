@@ -484,16 +484,4 @@ const runPage = async (settings) => {
             }, time);
         })();
     });
-
-    chrome.runtime.onMessage.addListener(function (
-        request,
-        sender,
-        sendResponse
-    ) {
-        if (request.selectedOptions !== undefined) {
-            removeTooltips();
-            runPage(request.selectedOptions, cache);
-        }
-        removeTableClasses();
-    });
 })();
