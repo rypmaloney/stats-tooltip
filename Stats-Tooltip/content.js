@@ -473,15 +473,9 @@ const runPage = async (settings) => {
             if (items.selectedOptions !== undefined)
                 options = items.selectedOptions;
 
-            //Fantrax messes with their dom after page load, dirty workaround
-            let time = 0;
-            if (location.href.includes('fantrax')) {
-                time = 3000;
-            }
-
             setTimeout(() => {
                 runPage(options);
-            }, time);
+            }, 2000);
         })();
     });
 })();
