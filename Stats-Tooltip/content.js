@@ -195,7 +195,7 @@ const findPlayerNames = (jsonData, paragraph) => {
 async function fetchStats(playerId, pos, cache) {
     const timeStamp = Math.floor(Date.now() / 1000);
     const url = `https://www.fangraphs.com/api/players/stats?playerid=${playerId}&position=${pos}&z=${timeStamp}`;
-
+    console.log(url);
     try {
         const key = `${playerId}-${pos}`;
 
@@ -248,6 +248,7 @@ const formatData = (data, key) => {
  */
 const processPlayerData = (data, position, selectedOptions) => {
     const about = ['aseason', 'AbbName', 'Age'];
+    const skipList = ['PROJ', 'ROS'];
     const projections = ['ATC'];
 
     keysToInclude =
@@ -259,6 +260,7 @@ const processPlayerData = (data, position, selectedOptions) => {
     // Get the current year and the two previous years
     const currentYear = new Date().getFullYear();
     const previousYears = [
+        currentYear,
         currentYear - 1,
         currentYear - 2,
         currentYear - 3,
@@ -268,13 +270,16 @@ const processPlayerData = (data, position, selectedOptions) => {
     for (let j = 0; j < data.length; j++) {
         const aseasonYear = parseInt(data[j]['aseason']);
         const team = data[j]['Team'];
+        const level = data[j]['AbbLevel'];
 
         if (
             (previousYears.includes(aseasonYear) &&
                 team != 'Average' &&
-                data[j].hasOwnProperty('WAR')) ||
+                data[j].hasOwnProperty('WAR') &&
+                !skipList.includes(level)) ||
             projections.includes(team)
         ) {
+            console.log(level);
             const playerDataObject = {};
             keysToInclude.forEach((key) => {
                 let tdata = data[j][key];
